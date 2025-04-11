@@ -10,21 +10,26 @@ COPPER = (204, 102, 0)
 RED = (204, 0, 0)
 BLUE = (0, 102, 204)
 
-# Custom PDF class with footer
+# Helper function to sanitize text
+def sanitize_text(text):
+    # Replace unsupported characters
+    return text.replace("’", "'").replace("“", '"').replace("”", '"')
+
+# Custom PDF class with Unicode-compatible font
 class IronBidPDF(FPDF):
     def header(self):
         if getattr(self, 'logo_path', None):
             self.image(self.logo_path, x=10, y=10, w=40)
         self.set_xy(120, 10)
         self.set_font("Helvetica", 'B', 12)
-        self.multi_cell(0, 8, "IRON PLUMBING SERVICES\nAmerican Fork, UT 84003\nIRONPLUMBINGUT@gmail.com\n801-895-5987", align='R')
+        self.multi_cell(0, 8, sanitize_text("IRON PLUMBING SERVICES\nAmerican Fork, UT 84003\nIRONPLUMBINGUT@gmail.com\n801-895-5987"), align='R')
         self.ln(10)
 
     def footer(self):
         self.set_y(-15)
         self.set_font("Helvetica", 'I', 9)
         self.set_text_color(150, 150, 150)
-        self.cell(0, 10, "Iron Strength, Fluid Precision", align='C')
+        self.cell(0, 10, sanitize_text("Iron Strength, Fluid Precision"), align='C')
 
 # Line drawing helper
 def draw_line(pdf, color=COPPER):
@@ -38,10 +43,10 @@ def add_section(pdf, title, content_list, bullet_point="-", line_color=None):
     if line_color:
         draw_line(pdf, color=line_color)
     pdf.set_font("Helvetica", style="B", size=11)
-    pdf.cell(0, 10, f"{title}:", ln=True)
+    pdf.cell(0, 10, sanitize_text(f"{title}:"), ln=True)
     pdf.set_font("Helvetica", size=11)
     for item in content_list:
-        pdf.multi_cell(0, 8, f"{bullet_point} {item}")
+        pdf.multi_cell(0, 8, sanitize_text(f"{bullet_point} {item}"))
     pdf.ln(5)
 
 # PDF generation logic
@@ -55,15 +60,15 @@ def generate_bid(project_name, location, client_name, bid_total, plumbing_fixtur
 
     # Header Section
     pdf.set_font("Helvetica", style="B", size=11)
-    pdf.cell(0, 10, f"Date: {today}", ln=True)
-    pdf.cell(0, 10, f"Project: {project_name}", ln=True)
-    pdf.cell(0, 10, f"Location: {location}", ln=True)
-    pdf.cell(0, 10, f"Prepared For: {client_name}", ln=True)
+    pdf.cell(0, 10, sanitize_text(f"Date: {today}"), ln=True)
+    pdf.cell(0, 10, sanitize_text(f"Project: {project_name}"), ln=True)
+    pdf.cell(0, 10, sanitize_text(f"Location: {location}"), ln=True)
+    pdf.cell(0, 10, sanitize_text(f"Prepared For: {client_name}"), ln=True)
     pdf.ln(5)
 
     # Scope
     pdf.set_font("Helvetica", style="BU", size=11)
-    pdf.cell(0, 10, "SCOPE OF WORK - PLUMBING & GAS", ln=True)
+    pdf.cell(0, 10, sanitize_text("SCOPE OF WORK - PLUMBING & GAS"), ln=True)
 
     add_section(pdf, "PLUMBING", [
         "Furnish and install all rough-in and finish plumbing for:",
@@ -97,16 +102,16 @@ def generate_bid(project_name, location, client_name, bid_total, plumbing_fixtur
 
     # Bid Total
     pdf.set_font("Helvetica", style="B", size=11)
-    pdf.cell(0, 10, f"TOTAL BID: ${bid_total:,.2f}", ln=True)
+    pdf.cell(0, 10, sanitize_text(f"TOTAL BID: ${bid_total:,.2f}"), ln=True)
     pdf.set_font("Helvetica", size=11)
-    pdf.cell(0, 10, "(Includes labor, materials, and standard commercial fixtures)", ln=True)
+    pdf.cell(0, 10, sanitize_text("(Includes labor, materials, and standard commercial fixtures)"), ln=True)
     pdf.ln(5)
 
     # Terms
     add_section(pdf, "TERMS", terms)
 
     # Contact / Sign-off
-    pdf.cell(0, 10, "Thank you for the opportunity to bid this project. We look forward to working with you.", ln=True)
+    pdf.cell(0, 10, sanitize_text("Thank you for the opportunity to bid this project. We look forward to working with you."), ln=True)
     pdf.ln(5)
     add_section(pdf, "- Iron Plumbing Utah", [
         "Jerod Galyean",
@@ -119,7 +124,7 @@ def generate_bid(project_name, location, client_name, bid_total, plumbing_fixtur
     add_section(pdf, "Authorized Signature", [
         "_________________________",
         "Signature",
-        f"Date: {sig_date}"
+        sanitize_text(f"Date: {sig_date}")
     ])
 
     add_section(pdf, "Client/GC Approval", [
