@@ -73,43 +73,48 @@ if st.button("Generate Bid PDF"):
 
 # Generate Bid Function
 def generate_bid(project, location, client, bid_total, fixture_list, terms_list, logo_path=None):
-    pdf = IronBidPDF()
-    
-    if logo_path:
-        pdf.logo_path = logo_path
+    try:
+        pdf = IronBidPDF()
+        
+        if logo_path:
+            pdf.logo_path = logo_path
 
-    pdf.add_page()
-    pdf.set_font("Courier", size=12)  # Use Courier font
+        pdf.add_page()
+        pdf.set_font("Courier", size=12)  # Use Courier font
 
-    # Add Project Details
-    pdf.cell(200, 10, txt=f"Project: {project}", ln=True, align='L')
-    pdf.cell(200, 10, txt=f"Location: {location}", ln=True, align='L')
-    pdf.cell(200, 10, txt=f"Prepared For: {client}", ln=True, align='L')
-    pdf.ln(10)
+        # Add Project Details
+        pdf.cell(200, 10, txt=f"Project: {project}", ln=True, align='L')
+        pdf.cell(200, 10, txt=f"Location: {location}", ln=True, align='L')
+        pdf.cell(200, 10, txt=f"Prepared For: {client}", ln=True, align='L')
+        pdf.ln(10)
 
-    # Add Fixtures
-    pdf.set_font("Courier", 'B', size=12)
-    pdf.cell(200, 10, txt="Fixtures:", ln=True, align='L')
-    pdf.set_font("Courier", size=12)
-    for fixture in fixture_list:
-        pdf.cell(200, 10, txt=f"- {fixture}", ln=True, align='L')
+        # Add Fixtures
+        pdf.set_font("Courier", 'B', size=12)
+        pdf.cell(200, 10, txt="Fixtures:", ln=True, align='L')
+        pdf.set_font("Courier", size=12)
+        for fixture in fixture_list:
+            pdf.cell(200, 10, txt=f"- {fixture}", ln=True, align='L')
 
-    # Add Bid Total
-    pdf.ln(5)
-    pdf.set_font("Courier", 'B', size=12)
-    pdf.cell(200, 10, txt=f"Total Bid Amount: ${bid_total:.2f}", ln=True, align='R')
+        # Add Bid Total
+        pdf.ln(5)
+        pdf.set_font("Courier", 'B', size=12)
+        pdf.cell(200, 10, txt=f"Total Bid Amount: ${bid_total:.2f}", ln=True, align='R')
 
-    # Add Terms
-    pdf.ln(10)
-    pdf.set_font("Courier", size=12)
-    pdf.cell(200, 10, txt="Terms and Conditions:", ln=True, align='L')
-    pdf.set_font("Courier", size=10)
-    for term in terms_list:
-        pdf.multi_cell(0, 10, txt=f"- {term}")
+        # Add Terms
+        pdf.ln(10)
+        pdf.set_font("Courier", size=12)
+        pdf.cell(200, 10, txt="Terms and Conditions:", ln=True, align='L')
+        pdf.set_font("Courier", size=10)
+        for term in terms_list:
+            pdf.multi_cell(0, 10, txt=f"- {term}")
 
-    # Save to in-memory buffer
-    pdf_buffer = BytesIO()
-    pdf.output(pdf_buffer)
-    pdf_buffer.seek(0)
-    return pdf_buffer
-  
+        # Save to in-memory buffer
+        pdf_buffer = BytesIO()
+        pdf.output(pdf_buffer)
+        pdf_buffer.seek(0)
+        return pdf_buffer
+
+    except Exception as e:
+        # Log the error for debugging purposes and re-raise the exception
+        print(f"Error in generate_bid function: {e}")
+        raise
