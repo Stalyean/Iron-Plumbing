@@ -2,97 +2,26 @@ import streamlit as st
 import json
 from fpdf import FPDF
 from datetime import date
+import tempfile
 from io import BytesIO
 
-# Enhanced IronBidPDF Class with Branding & Styling
+# Enhanced IronBidPDF Class with Courier Font
 class IronBidPDF(FPDF):
     def header(self):
         if getattr(self, 'logo_path', None):
             self.image(self.logo_path, x=10, y=10, w=40)
         self.set_xy(120, 10)
-        self.set_font("Courier", 'B', 12)
+        self.set_font("Courier", 'B', 12)  # Use Courier Bold for header
         self.multi_cell(0, 8, "IRON PLUMBING SERVICES\nAmerican Fork, UT 84003\nIRONPLUMBINGUT@gmail.com\n801-895-5987", align='R')
-
-        # Copper line under header
-        self.set_draw_color(204, 102, 0)  # Copper RGB
-        self.set_line_width(1)
-        self.line(10, 35, 200, 35)
-        self.ln(20)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Courier", 'I', 10)
-        self.set_text_color(100, 100, 100)
-        self.cell(0, 10, 'Iron Strength, Fluid Precision', align='C')
-
-# Generate Bid Function with In-Memory Output
-def generate_bid(project, location, client, bid_total, fixture_list, terms_list, logo_path=None):
-    pdf = IronBidPDF()
-    if logo_path:
-        pdf.logo_path = logo_path
-
-    pdf.add_page()
-    pdf.set_font("Courier", size=12)
-
-    # Project Info
-    pdf.cell(200, 10, txt=f"Project: {project}", ln=True, align='L')
-    pdf.cell(200, 10, txt=f"Location: {location}", ln=True, align='L')
-    pdf.cell(200, 10, txt=f"Prepared For: {client}", ln=True, align='L')
-    pdf.cell(200, 10, txt=f"Date: {date.today().strftime('%B %d, %Y')}", ln=True, align='L')
-    pdf.ln(5)
-
-    # Blue line
-    pdf.set_draw_color(0, 102, 204)  # Blue
-    pdf.set_line_width(0.5)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(5)
-
-    # Fixtures
-    pdf.set_font("Courier", 'B', size=12)
-    pdf.cell(200, 10, txt="Fixtures:", ln=True, align='L')
-    pdf.set_font("Courier", size=12)
-    for fixture in fixture_list:
-        pdf.cell(200, 10, txt=f"- {fixture}", ln=True, align='L')
-
-    # Red line
-    pdf.set_draw_color(204, 0, 0)  # Red
-    pdf.set_line_width(0.5)
-    pdf.line(10, pdf.get_y() + 5, 200, pdf.get_y() + 5)
-    pdf.ln(10)
-
-    # Bid Total
-    pdf.set_font("Courier", 'B', size=12)
-    pdf.cell(200, 10, txt=f"Total Bid Amount: ${bid_total:.2f}", ln=True, align='R')
-
-    # Copper line
-    pdf.set_draw_color(204, 102, 0)  # Copper
-    pdf.line(10, pdf.get_y() + 5, 200, pdf.get_y() + 5)
-    pdf.ln(10)
-
-    # Terms and Conditions
-    pdf.set_font("Courier", size=12)
-    pdf.cell(200, 10, txt="Terms and Conditions:", ln=True, align='L')
-    pdf.set_font("Courier", size=10)
-    for term in terms_list:
-        pdf.multi_cell(0, 10, txt=f"- {term}")
-
-    # Output to in-memory buffer
-    pdf_buffer = BytesIO()
-    pdf.output(pdf_buffer)
-    pdf_buffer.seek(0)
-    return pdf_buffer
+        self.ln(10)
 
 # Streamlit UI
 st.title("Iron Plumbing Bid Generator (Enhanced)")
-st.write("Fill out the form below to generate a professional bid PDF with branding.")
+st.write("Fill out the form below to generate a professional bid PDF.")
 
 # Sidebar for Logo Upload
 st.sidebar.subheader("Upload Your Logo")
 uploaded_logo = st.sidebar.file_uploader("Upload Logo (Optional)", type=["png", "jpg", "jpeg"])
-
-# Upload TTF Font (optional)
-st.sidebar.subheader("Upload Custom Font")
-uploaded_font = st.sidebar.file_uploader("Upload TTF Font (Optional)", type=["ttf"])
 
 # Section for Importing AI-Extracted Data
 st.subheader("Import AI-Extracted Data")
@@ -100,9 +29,11 @@ uploaded_data_file = st.file_uploader("Upload AI-Extracted Data (JSON)", type=["
 
 if uploaded_data_file:
     try:
+        # Parse the uploaded JSON file
         uploaded_data = json.load(uploaded_data_file)
         st.success("AI-Extracted Data Uploaded Successfully!")
 
+        # Pre-fill fields based on uploaded data
         project = st.text_input("Project Name", value=uploaded_data.get("project_name", ""))
         location = st.text_input("Project Location", value=uploaded_data.get("location", ""))
         client = st.text_input("Prepared For (GC/Client)", value=uploaded_data.get("client_name", ""))
@@ -112,6 +43,7 @@ if uploaded_data_file:
     except Exception as e:
         st.error(f"Failed to process uploaded data: {e}")
 else:
+    # Default values if no file is uploaded
     project = st.text_input("Project Name")
     location = st.text_input("Project Location")
     client = st.text_input("Prepared For (GC/Client)")
@@ -121,25 +53,63 @@ else:
 
 # Generate Button
 if st.button("Generate Bid PDF"):
+    # Process Input
     fixture_list = [line.strip() for line in fixtures.split("\n") if line.strip()]
     terms_list = [line.strip() for line in terms_input.split("\n") if line.strip()]
     logo_path = None
 
+    # Save uploaded logo if provided
     if uploaded_logo:
-        logo_path = f"/tmp/{uploaded_logo.name}"
+        logo_path = tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_logo.name.split('.')[-1]}").name
         with open(logo_path, "wb") as f:
             f.write(uploaded_logo.read())
 
-    if uploaded_font:
-        font_path = f"/tmp/{uploaded_font.name}"
-        with open(font_path, "wb") as f:
-            f.write(uploaded_font.read())
-        FPDF.add_font("CustomFont", "", font_path, uni=True)
-
+    # Generate PDF
     try:
-        file_buffer = generate_bid(project, location, client, bid_total, fixture_list, terms_list, logo_path)
-        st.download_button("Download Bid PDF", file_buffer, file_name="Iron_Bid.pdf")
+        pdf_buffer = generate_bid(project, location, client, bid_total, fixture_list, terms_list, logo_path)
+        st.download_button("Download Bid PDF", pdf_buffer, file_name="Bid_Document.pdf")
     except Exception as e:
         st.error(f"An error occurred while generating the PDF: {e}")
 
- 
+# Generate Bid Function
+def generate_bid(project, location, client, bid_total, fixture_list, terms_list, logo_path=None):
+    pdf = IronBidPDF()
+    
+    if logo_path:
+        pdf.logo_path = logo_path
+
+    pdf.add_page()
+    pdf.set_font("Courier", size=12)  # Use Courier font
+
+    # Add Project Details
+    pdf.cell(200, 10, txt=f"Project: {project}", ln=True, align='L')
+    pdf.cell(200, 10, txt=f"Location: {location}", ln=True, align='L')
+    pdf.cell(200, 10, txt=f"Prepared For: {client}", ln=True, align='L')
+    pdf.ln(10)
+
+    # Add Fixtures
+    pdf.set_font("Courier", 'B', size=12)
+    pdf.cell(200, 10, txt="Fixtures:", ln=True, align='L')
+    pdf.set_font("Courier", size=12)
+    for fixture in fixture_list:
+        pdf.cell(200, 10, txt=f"- {fixture}", ln=True, align='L')
+
+    # Add Bid Total
+    pdf.ln(5)
+    pdf.set_font("Courier", 'B', size=12)
+    pdf.cell(200, 10, txt=f"Total Bid Amount: ${bid_total:.2f}", ln=True, align='R')
+
+    # Add Terms
+    pdf.ln(10)
+    pdf.set_font("Courier", size=12)
+    pdf.cell(200, 10, txt="Terms and Conditions:", ln=True, align='L')
+    pdf.set_font("Courier", size=10)
+    for term in terms_list:
+        pdf.multi_cell(0, 10, txt=f"- {term}")
+
+    # Save to in-memory buffer
+    pdf_buffer = BytesIO()
+    pdf.output(pdf_buffer)
+    pdf_buffer.seek(0)
+    return pdf_buffer
+  
