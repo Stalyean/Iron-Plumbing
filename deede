@@ -1,0 +1,116 @@
+import streamlit as st
+import json
+from fpdf import FPDF
+from datetime import date
+import tempfile
+
+# IronBidPDF Class
+class IronBidPDF(FPDF):
+    def header(self):
+        if getattr(self, 'logo_path', None):
+            self.image(self.logo_path, x=10, y=10, w=40)
+        self.set_xy(120, 10)
+        self.set_font("Courier", 'B', 12)
+        self.multi_cell(0, 8, "IRON PLUMBING SERVICES\nAmerican Fork, UT 84003\nIRONPLUMBINGUT@gmail.com\n801-895-5987", align='R')
+        self.ln(10)
+
+# Utility Function to Add Sections
+def add_section(pdf, title, content_list, bullet_point="-"):
+    pdf.set_font("Courier", style="B", size=11)
+    pdf.cell(0, 10, f"{title}:", ln=True)
+    pdf.set_font("Courier", size=11)
+    for item in content_list:
+        pdf.multi_cell(0, 8, f"{bullet_point} {item}")
+    pdf.ln(5)
+
+# Generate Bid Function
+def generate_bid(data, logo_path=None):
+    today = date.today().strftime("%B %d, %Y")
+    pdf = IronBidPDF()
+    pdf.logo_path = logo_path
+    pdf.add_page()
+
+    # Project Details
+    pdf.set_font("Courier", style="B", size=11)
+    pdf.cell(0, 10, f"Date: {today}", ln=True)
+    pdf.cell(0, 10, f"Project: {data['project_name']}", ln=True)
+    pdf.cell(0, 10, f"Location: {data['location']}", ln=True)
+    pdf.cell(0, 10, f"Prepared For: {data['client_name']}", ln=True)
+    pdf.ln(5)
+
+    # Scope of Work
+    add_section(pdf, "SCOPE OF WORK - PLUMBING", data['plumbing_fixtures'])
+    add_section(pdf, "GAS", [
+        "Install gas line to water heater location (if gas WH is selected)",
+        "Test and pressure-check line to code",
+        "Coordinate with utility for tie-in"
+    ])
+    add_section(pdf, "INCLUSIONS", data['inclusions'])
+    add_section(pdf, "EXCLUSIONS", data['exclusions'])
+
+    # Total Bid
+    pdf.set_font("Courier", style="B", size=11)
+    pdf.cell(0, 10, f"TOTAL BID: ${data['bid_total']:.2f}", ln=True)
+    pdf.cell(0, 10, "(Includes labor, materials, and standard commercial fixtures)", ln=True)
+
+    # Terms and Signatures
+    add_section(pdf, "TERMS", data['terms'])
+    add_section(pdf, "Authorized Signature", ["_________________________", "Signature", f"Date: {today}"], bullet_point="")
+    add_section(pdf, "Client/GC Approval", ["_________________________", "Client Signature", "Date: ___________________"], bullet_point="")
+
+    # Save to Temporary File
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    pdf.output(temp_file.name)
+    return temp_file.name
+
+# Streamlit UI
+st.title("Iron Plumbing Bid Generator (Hybrid)")
+st.write("Fill out the form below to generate a professional bid PDF.")
+
+# Sidebar for Logo and AI Data Upload
+uploaded_logo = st.sidebar.file_uploader("Upload Logo (Optional)", type=["png", "jpg", "jpeg"])
+uploaded_data_file = st.sidebar.file_uploader("Upload AI-Extracted Data (JSON)", type=["json"])
+
+# Default Values
+default_data = {
+    "project_name": "",
+    "location": "",
+    "client_name": "",
+    "bid_total": 0.0,
+    "plumbing_fixtures": ["Example Fixture 1", "Example Fixture 2"],
+    "inclusions": ["Commercial-grade fixtures", "Coordination with GC and other trades"],
+    "exclusions": ["Permit fees", "Trenching beyond 10' of building"],
+    "terms": ["50% due at rough-in", "50% upon final inspection"]
+}
+
+# Populate Data from JSON or User Input
+data = default_data
+if uploaded_data_file:
+    try:
+        data = json.load(uploaded_data_file)
+        st.success("AI-Extracted Data Loaded Successfully!")
+    except Exception as e:
+        st.error(f"Failed to load uploaded data: {e}")
+
+# Form Inputs
+data['project_name'] = st.text_input("Project Name", value=data['project_name'])
+data['location'] = st.text_input("Project Location", value=data['location'])
+data['client_name'] = st.text_input("Prepared For (GC/Client)", value=data['client_name'])
+data['bid_total'] = st.number_input("Total Bid Amount", min_value=0.0, step=100.0, value=data['bid_total'])
+data['plumbing_fixtures'] = st.text_area("List each fixture on a new line", value="\n".join(data['plumbing_fixtures'])).split("\n")
+data['terms'] = st.text_area("List terms (one per line)", value="\n".join(data['terms'])).split("\n")
+
+# Generate PDF Button
+if st.button("Generate Bid PDF"):
+    logo_path = None
+    if uploaded_logo:
+        logo_path = tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_logo.name.split('.')[-1]}").name
+        with open(logo_path, "wb") as f:
+            f.write(uploaded_logo.read())
+
+    try:
+        file_path = generate_bid(data, logo_path)
+        with open(file_path, "rb") as f:
+            st.download_button("Download Bid PDF", f, file_name="Bid_Document.pdf")
+    except Exception as e:
+        st.error(f"An error occurred while generating the PDF: {e}")
