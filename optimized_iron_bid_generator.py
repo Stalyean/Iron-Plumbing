@@ -115,7 +115,7 @@ def generate_bid_pdf(project, location, client, total, fixtures, terms, logo_pat
     add_section(pdf, "Authorized Signature", ["_________________________", "Signature", f"Date: {sig_date}"])
     add_section(pdf, "Client/GC Approval", ["_________________________", "Client Signature", "Date: ___________________"])
 
-    # ✅ CORRECT OUTPUT TO MEMORY
+    # Correct output for download
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return BytesIO(pdf_bytes)
 
@@ -132,7 +132,7 @@ def generate_dossier_pdf(project, location, client, fixtures, contact=None, logo
     pdf.ln(10)
 
     draw_line(pdf, color=BLUE)
-    add_section(pdf, "Fixture Summary", fixtures, bullet_point="•", line_color=RED)
+    add_section(pdf, "Fixture Summary", fixtures, bullet_point="-", line_color=RED)  # <- ASCII-safe bullet
 
     if contact:
         add_section(pdf, "Primary Contact", [
@@ -145,7 +145,6 @@ def generate_dossier_pdf(project, location, client, fixtures, contact=None, logo
     draw_line(pdf, color=COPPER)
     pdf.cell(0, 10, "Additional documentation available upon request.", ln=True)
 
-    # ✅ CORRECT OUTPUT TO MEMORY
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return BytesIO(pdf_bytes)
 
@@ -155,13 +154,12 @@ st.title("Iron Plumbing PDF Generator")
 
 tab1, tab2 = st.tabs(["📄 Bid Generator", "📁 Dossier Generator"])
 
-# Sidebar shared inputs
+# Sidebar
 with st.sidebar:
     st.subheader("Upload Files")
     uploaded_logo = st.file_uploader("Company Logo", type=["png", "jpg", "jpeg"])
     uploaded_json = st.file_uploader("Auto-Fill JSON", type=["json"])
 
-# Load JSON
 autofill_data = {}
 if uploaded_json:
     try:
@@ -170,7 +168,6 @@ if uploaded_json:
     except Exception as e:
         st.sidebar.error(f"Error loading JSON: {e}")
 
-# Save logo temporarily
 logo_path = None
 if uploaded_logo:
     temp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_logo.name.split('.')[-1]}")
