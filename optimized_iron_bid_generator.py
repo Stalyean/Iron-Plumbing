@@ -26,7 +26,7 @@ def add_section(pdf, title, content_list, bullet_point="-", line_color=None):
         draw_line(pdf, color=line_color)
     pdf.set_font("Helvetica", style="B", size=11)
     pdf.cell(0, 10, sanitize_text(f"{title}:"), ln=True)
-    pdf.set_font("Helvetica", size=11)
+    pdf.set_font("Helvetica", style="", size=11)
     for item in content_list:
         pdf.multi_cell(0, 8, sanitize_text(f"{bullet_point} {item}"))
     pdf.ln(5)
@@ -37,13 +37,13 @@ class IronPDF(FPDF):
         if getattr(self, 'logo_path', None) and os.path.exists(self.logo_path):
             self.image(self.logo_path, x=10, y=10, w=40)
         self.set_xy(120, 10)
-        self.set_font("Helvetica", 'B', 12)
+        self.set_font("Helvetica", style="B", size=12)
         self.multi_cell(0, 8, sanitize_text("IRON PLUMBING SERVICES\nAmerican Fork, UT 84003\nIRONPLUMBINGUT@gmail.com\n801-895-5987"), align='R')
         self.ln(10)
 
     def footer(self):
         self.set_y(-15)
-        self.set_font("Helvetica", 'I', 9)
+        self.set_font("Helvetica", style="I", size=9)
         self.set_text_color(150, 150, 150)
         self.cell(0, 10, sanitize_text("Iron Strength, Fluid Precision"), align='C')
 
@@ -55,14 +55,14 @@ def generate_bid_pdf(project, location, client, total, fixtures, terms, logo_pat
     pdf.logo_path = logo_path
     pdf.add_page()
 
-    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_font("Helvetica", style="B", size=11)
     pdf.cell(0, 10, f"Date: {today}", ln=True)
     pdf.cell(0, 10, f"Project: {project}", ln=True)
     pdf.cell(0, 10, f"Location: {location}", ln=True)
     pdf.cell(0, 10, f"Prepared For: {client}", ln=True)
     pdf.ln(5)
 
-    pdf.set_font("Helvetica", "BU", 11)
+    pdf.set_font("Helvetica", style="BU", size=11)
     pdf.cell(0, 10, "SCOPE OF WORK - PLUMBING & GAS", ln=True)
 
     add_section(pdf, "PLUMBING", [
@@ -95,9 +95,9 @@ def generate_bid_pdf(project, location, client, total, fixtures, terms, logo_pat
         "Trenching or tie-ins beyond 10’ of building"
     ])
 
-    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_font("Helvetica", style="B", size=11)
     pdf.cell(0, 10, f"TOTAL BID: ${total:,.2f}", ln=True)
-    pdf.set_font("Helvetica", 11)
+    pdf.set_font("Helvetica", style="", size=11)
     pdf.cell(0, 10, "(Includes labor, materials, and standard commercial fixtures)", ln=True)
     pdf.ln(5)
 
@@ -125,9 +125,9 @@ def generate_dossier_pdf(project, location, client, fixtures, contact=None, logo
     pdf = IronPDF()
     pdf.logo_path = logo_path
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 14)
+    pdf.set_font("Helvetica", style="B", size=14)
     pdf.cell(0, 10, f"PROJECT DOSSIER: {project}", ln=True)
-    pdf.set_font("Helvetica", "", 12)
+    pdf.set_font("Helvetica", style="", size=12)
     pdf.cell(0, 10, f"Location: {location}", ln=True)
     pdf.cell(0, 10, f"Prepared For: {client}", ln=True)
     pdf.ln(10)
@@ -157,12 +157,13 @@ st.title("Iron Plumbing PDF Generator")
 
 tab1, tab2 = st.tabs(["📄 Bid Generator", "📁 Dossier Generator"])
 
-# Shared inputs
+# Sidebar shared inputs
 with st.sidebar:
     st.subheader("Upload Files")
     uploaded_logo = st.file_uploader("Company Logo", type=["png", "jpg", "jpeg"])
     uploaded_json = st.file_uploader("Auto-Fill JSON", type=["json"])
 
+# Load JSON
 autofill_data = {}
 if uploaded_json:
     try:
@@ -171,7 +172,7 @@ if uploaded_json:
     except Exception as e:
         st.sidebar.error(f"Error loading JSON: {e}")
 
-# Process logo file
+# Save logo temporarily
 logo_path = None
 if uploaded_logo:
     temp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_logo.name.split('.')[-1]}")
