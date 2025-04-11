@@ -122,5 +122,4 @@ if st.button("Generate Bid PDF"):
         st.download_button("Download Bid PDF", pdf_buffer, file_name="Bid_Document.pdf")
     except Exception as e:
         st.error(f"An error occurred while generating the PDF: {e}")
-
-   
+ 
