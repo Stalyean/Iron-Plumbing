@@ -108,9 +108,15 @@ if st.button("Generate Bid PDF"):
 
     # Save uploaded logo if provided
     if uploaded_logo:
-        logo_path = tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_logo.name.split('.')[-1]}").name
-        with open(logo_path, "wb") as f:
-            f.write(uploaded_logo.read())
+        try:
+            # Save the uploaded logo to a temporary file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_logo.name.split('.')[-1]}")
+            temp_file.write(uploaded_logo.read())
+            temp_file.close()
+            logo_path = temp_file.name
+        except Exception as e:
+            st.error(f"An error occurred while processing the uploaded logo: {e}")
+            logo_path = None
 
     # Generate PDF
     try:
@@ -118,3 +124,4 @@ if st.button("Generate Bid PDF"):
         st.download_button("Download Bid PDF", pdf_buffer, file_name="Bid_Document.pdf")
     except Exception as e:
         st.error(f"An error occurred while generating the PDF: {e}")
+   
