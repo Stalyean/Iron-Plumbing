@@ -115,10 +115,9 @@ def generate_bid_pdf(project, location, client, total, fixtures, terms, logo_pat
     add_section(pdf, "Authorized Signature", ["_________________________", "Signature", f"Date: {sig_date}"])
     add_section(pdf, "Client/GC Approval", ["_________________________", "Client Signature", "Date: ___________________"])
 
-    buffer = BytesIO()
-    pdf.output(buffer)
-    buffer.seek(0)
-    return buffer
+    # ✅ CORRECT OUTPUT TO MEMORY
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    return BytesIO(pdf_bytes)
 
 # --- Dossier PDF Generator ---
 def generate_dossier_pdf(project, location, client, fixtures, contact=None, logo_path=None):
@@ -146,10 +145,9 @@ def generate_dossier_pdf(project, location, client, fixtures, contact=None, logo
     draw_line(pdf, color=COPPER)
     pdf.cell(0, 10, "Additional documentation available upon request.", ln=True)
 
-    buffer = BytesIO()
-    pdf.output(buffer)
-    buffer.seek(0)
-    return buffer
+    # ✅ CORRECT OUTPUT TO MEMORY
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    return BytesIO(pdf_bytes)
 
 # --- Streamlit UI ---
 st.set_page_config(layout="centered")
