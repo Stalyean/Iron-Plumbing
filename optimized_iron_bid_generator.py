@@ -104,8 +104,8 @@ def generate_bid_pdf(project, location, client, total, fixtures, terms, sig_date
     pdf.cell(0, 10, "Terms:", ln=True)
     pdf.set_font("Helvetica", size=11)
     for term in terms.splitlines():
-    ascii_bullet = "-" if not term.startswith("  ") else "  -"
-    pdf.multi_cell(0, 6, f"{ascii_bullet} {term.strip()}")
+        ascii_bullet = "-" if not term.startswith("  ") else "  -"
+        pdf.multi_cell(0, 6, f"{ascii_bullet} {term.strip()}")
     pdf.ln(10)
     pdf.cell(0, 10, "Signature: _____________________", ln=True)
     pdf.cell(0, 10, f"Date: {sig_date}", ln=True)
