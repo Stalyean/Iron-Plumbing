@@ -92,7 +92,11 @@ def generate_bid_pdf(project, location, client, total, fixtures, terms, sig_date
     pdf.cell(0, 10, f"Project: {project}", ln=True)
     pdf.cell(0, 10, f"Location: {location}", ln=True)
     pdf.cell(0, 10, f"Client: {client}", ln=True)
-    pdf.cell(0, 10, f"Total Bid: ${total:,.2f}", ln=True)
+    try:
+        formatted_total = f"${float(total):,.2f}"
+    except (ValueError, TypeError):
+        formatted_total = "N/A"
+    pdf.cell(0, 10, f"Total Bid: {formatted_total}", ln=True)
     pdf.ln(5)
     pdf.set_font("Helvetica", style="B", size=12)
     pdf.cell(0, 10, "Scope of Work:", ln=True)
@@ -167,4 +171,3 @@ with tab3:
     render_cost_estimator()
     pdf = generate_bid_pdf(project, location, contact_name, bid_total, fixtures, terms, sig_date, logo_path)
     st.download_button("📥 Download Bid PDF", pdf, file_name="Iron_Bid.pdf")
-
