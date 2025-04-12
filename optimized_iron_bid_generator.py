@@ -1,17 +1,18 @@
 import streamlit as st
-from fpdf import FPDF
-from datetime import date
-import tempfile
+import pandas as pd
 import json
-from io import BytesIO
+from datetime import date
+from io import StringIO, BytesIO
+import tempfile
 import os
+from fpdf import FPDF
 
 # --- Constants ---
 COPPER = (204, 102, 0)
 RED = (204, 0, 0)
 BLUE = (0, 102, 204)
 
-# --- Helpers ---
+# --- PDF Helpers ---
 def sanitize_text(text):
     return text.replace("’", "'").replace("“", '"').replace("”", '"')
 
@@ -102,9 +103,9 @@ def generate_bid_pdf(project, location, client, total, fixtures, terms, logo_pat
     pdf.ln(5)
 
     add_section(pdf, "TERMS", terms)
-
     pdf.cell(0, 10, "Thank you for the opportunity to bid this project. We look forward to working with you.", ln=True)
     pdf.ln(5)
+
     add_section(pdf, "- Iron Plumbing Utah", [
         "Jerod Galyean",
         "Field Manager",
@@ -114,10 +115,7 @@ def generate_bid_pdf(project, location, client, total, fixtures, terms, logo_pat
 
     add_section(pdf, "Authorized Signature", ["_________________________", "Signature", f"Date: {sig_date}"])
     add_section(pdf, "Client/GC Approval", ["_________________________", "Client Signature", "Date: ___________________"])
-
-    # Correct output for download
-    pdf_bytes = pdf.output(dest='S').encode('latin1')
-    return BytesIO(pdf_bytes)
+    return BytesIO(pdf.output(dest='S').encode('latin1'))
 
 # --- Dossier PDF Generator ---
 def generate_dossier_pdf(project, location, client, fixtures, contact=None, logo_path=None):
@@ -132,7 +130,7 @@ def generate_dossier_pdf(project, location, client, fixtures, contact=None, logo
     pdf.ln(10)
 
     draw_line(pdf, color=BLUE)
-    add_section(pdf, "Fixture Summary", fixtures, bullet_point="-", line_color=RED)  # <- ASCII-safe bullet
+    add_section(pdf, "Fixture Summary", fixtures, bullet_point="-", line_color=RED)
 
     if contact:
         add_section(pdf, "Primary Contact", [
@@ -145,35 +143,73 @@ def generate_dossier_pdf(project, location, client, fixtures, contact=None, logo
     draw_line(pdf, color=COPPER)
     pdf.cell(0, 10, "Additional documentation available upon request.", ln=True)
 
-    pdf_bytes = pdf.output(dest='S').encode('latin1')
-    return BytesIO(pdf_bytes)
+    return BytesIO(pdf.output(dest='S').encode('latin1'))
+
+# --- Cost Estimator Tab ---
+def render_cost_estimator():
+    st.header("🧮 Project Cost Estimator")
+
+    if "cost_items" not in st.session_state:
+        st.session_state.cost_items = [
+            {"material_cost": 0.0, "labor_hours": 0.0, "labor_rate": 85.0, "margin_percent": 15.0, "final_price": 0.0}
+        ]
+
+    def calculate_final_price(item):
+        labor_cost = item["labor_hours"] * item["labor_rate"]
+        subtotal = item["material_cost"] + labor_cost
+        return round(subtotal * (1 + item["margin_percent"] / 100), 2)
+
+    def add_cost_item():
+        st.session_state.cost_items.append(
+            {"material_cost": 0.0, "labor_hours": 0.0, "labor_rate": 85.0, "margin_percent": 15.0, "final_price": 0.0}
+        )
+
+    for i, item in enumerate(st.session_state.cost_items):
+        st.subheader(f"Line Item {i + 1}")
+        item["material_cost"] = st.number_input(f"Material Cost ${i+1}", min_value=0.0, value=item["material_cost"], key=f"mat_{i}")
+        item["labor_hours"] = st.number_input(f"Labor Hours {i+1}", min_value=0.0, value=item["labor_hours"], key=f"hrs_{i}")
+        item["labor_rate"] = st.number_input(f"Labor Rate ($/hr) {i+1}", min_value=0.0, value=item["labor_rate"], key=f"rate_{i}")
+        item["margin_percent"] = st.number_input(f"Target Margin % {i+1}", min_value=0.0, max_value=100.0, value=item["margin_percent"], key=f"margin_{i}")
+
+        item["final_price"] = calculate_final_price(item)
+        st.success(f"Final Price: ${item['final_price']:,.2f}")
+        st.markdown("---")
+
+    st.button("➕ Add Line Item", on_click=add_cost_item)
+
+    total_bid = sum(item["final_price"] for item in st.session_state.cost_items)
+    st.markdown(f"## 🧾 Total Project Bid: **${total_bid:,.2f}**")
+
+    if st.button("📤 Export to CSV"):
+        output = StringIO()
+        df = pd.DataFrame(st.session_state.cost_items)
+        df.to_csv(output, index=False)
+        st.download_button("Download CSV", data=output.getvalue(), file_name="iron_cost_estimate.csv", mime="text/csv")
 
 # --- Streamlit UI ---
 st.set_page_config(layout="centered")
-st.title("Iron Plumbing PDF Generator")
+st.title("Iron Plumbing PDF & Estimating Suite")
 
-tab1, tab2 = st.tabs(["📄 Bid Generator", "📁 Dossier Generator"])
+tab1, tab2, tab3 = st.tabs(["📄 Bid Generator", "📁 Dossier Generator", "🧮 Cost Estimator"])
 
-# Sidebar
+# Shared Sidebar
 with st.sidebar:
     st.subheader("Upload Files")
     uploaded_logo = st.file_uploader("Company Logo", type=["png", "jpg", "jpeg"])
     uploaded_json = st.file_uploader("Auto-Fill JSON", type=["json"])
-
-autofill_data = {}
-if uploaded_json:
-    try:
-        autofill_data = json.load(uploaded_json)
-        st.sidebar.success("JSON Loaded!")
-    except Exception as e:
-        st.sidebar.error(f"Error loading JSON: {e}")
-
-logo_path = None
-if uploaded_logo:
-    temp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_logo.name.split('.')[-1]}")
-    logo_path = temp_logo.name
-    temp_logo.write(uploaded_logo.read())
-    temp_logo.close()
+    autofill_data = {}
+    if uploaded_json:
+        try:
+            autofill_data = json.load(uploaded_json)
+            st.success("JSON Loaded!")
+        except Exception as e:
+            st.error(f"Error loading JSON: {e}")
+    logo_path = None
+    if uploaded_logo:
+        temp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_logo.name.split('.')[-1]}")
+        logo_path = temp_logo.name
+        temp_logo.write(uploaded_logo.read())
+        temp_logo.close()
 
 # --- Tab 1: Bid Generator ---
 with tab1:
@@ -221,3 +257,8 @@ with tab2:
             st.download_button("Download Dossier PDF", pdf, file_name="Iron_Dossier.pdf")
         except Exception as e:
             st.error(f"Error generating dossier: {e}")
+
+# --- Tab 3 ---
+with tab3:
+    render_cost_estimator()
+
