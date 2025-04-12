@@ -53,6 +53,7 @@ st.markdown("""
 
 # --- Sidebar Uploads ---
 uploaded_json = st.sidebar.file_uploader("📥 Load Auto-Fill JSON", type=["json"])
+autofill_data = {}
 if uploaded_json:
     import json
     try:
@@ -143,12 +144,12 @@ def render_cost_estimator():
         with st.container():
             st.markdown(f'<div class="line-item-card">', unsafe_allow_html=True)
             with st.expander(f"🔧 Line Item {i + 1}", expanded=True):
-            item["material_cost"] = st.number_input(f"📦 Material Cost ${i+1}", min_value=0.0, value=item["material_cost"], key=f"mat_{i}")
-            item["labor_hours"] = st.number_input(f"🕒 Labor Hours {i+1}", min_value=0.0, value=item["labor_hours"], key=f"hrs_{i}")
-            item["labor_rate"] = st.number_input(f"💰 Labor Rate ($/hr) {i+1}", min_value=0.0, value=item["labor_rate"], key=f"rate_{i}")
-            item["margin_percent"] = st.number_input(f"📈 Target Margin % {i+1}", min_value=0.0, max_value=100.0, value=item["margin_percent"], key=f"margin_{i}")
-                        item["final_price"] = calculate_final_price(item)
-            st.success(f"✅ Final Price: ${item['final_price']:,.2f}")
+                item["material_cost"] = st.number_input(f"📦 Material Cost ${i+1}", min_value=0.0, value=item["material_cost"], key=f"mat_{i}")
+                item["labor_hours"] = st.number_input(f"🕒 Labor Hours {i+1}", min_value=0.0, value=item["labor_hours"], key=f"hrs_{i}")
+                item["labor_rate"] = st.number_input(f"💰 Labor Rate ($/hr) {i+1}", min_value=0.0, value=item["labor_rate"], key=f"rate_{i}")
+                item["margin_percent"] = st.number_input(f"📈 Target Margin % {i+1}", min_value=0.0, max_value=100.0, value=item["margin_percent"], key=f"margin_{i}")
+                item["final_price"] = calculate_final_price(item)
+                st.success(f"✅ Final Price: ${item['final_price']:,.2f}")
             st.markdown("</div>", unsafe_allow_html=True)
     st.button("➕ Add Line Item", on_click=add_cost_item)
     total_bid = sum(item["final_price"] for item in st.session_state.cost_items)
@@ -168,23 +169,20 @@ tab1, tab2, tab3 = st.tabs(["📄 Bid Generator", "📁 Dossier Generator", "�
 
 with tab1:
     st.header("🧾 Project Information")
-    project = st.text_input("Project Name")
-    location = st.text_input("Project Address")
-    project_type = st.selectbox("Project Type", ["New Build", "Remodel", "Addition", "TI", "Other"])
-    scope_description = st.text_area("Scope of Work Requested")
-    square_footage = st.text_input("Square Footage")
-    num_wet_areas = st.text_input("Number of Bathrooms/Kitchens/Wet Areas")
-    start_date = st.date_input("Expected Project Start Date")
+    project = st.text_input("Project Name", value=autofill_data.get("project_info", {}).get("project_name", ""))
+    location = st.text_input("Project Address", value=autofill_data.get("project_info", {}).get("project_address", ""))
+    project_type = st.selectbox("Project Type", ["New Build", "Remodel", "Addition", "TI", "Other"], index=["New Build", "Remodel", "Addition", "TI", "Other"].index(autofill_data.get("project_info", {}).get("project_type", "New Build")))
+    scope_description = st.text_area("Scope of Work Requested", value=autofill_data.get("project_info", {}).get("scope_description", ""))
+    square_footage = st.text_input("Square Footage", value=autofill_data.get("project_info", {}).get("square_footage", ""))
+        start_date = st.date_input("Expected Project Start Date")
     completion_date = st.date_input("Desired Completion Date")
-    plans_available = st.radio("Plans/Drawings Available?", ["Yes", "No"])
-    plans_link = st.text_input("Upload Link or Attachment (if Yes)")
-
+        
     st.header("👤 Client/Contact Info")
-    company = st.text_input("Company Name")
-    contact_name = st.text_input("Client/Contact Name")
-    phone = st.text_input("Phone Number")
-    email = st.text_input("Email Address")
-    preferred_contact = st.selectbox("Preferred Contact Method", ["Phone", "Email", "Text", "Other"])
+    company = st.text_input("Company Name", value=autofill_data.get("client_info", {}).get("company", ""))
+    contact_name = st.text_input("Client/Contact Name", value=autofill_data.get("client_info", {}).get("contact_name", ""))
+    phone = st.text_input("Phone Number", value=autofill_data.get("client_info", {}).get("phone", ""))
+    email = st.text_input("Email Address", value=autofill_data.get("client_info", {}).get("email", ""))
+    preferred_contact = st.selectbox("Preferred Contact Method", ["Phone", "Email", "Text", "Other"], index=["Phone", "Email", "Text", "Other"].index(autofill_data.get("client_info", {}).get("preferred_contact", "Phone")))
 
     st.header("🏗️ Job Site Conditions")
     existing_plumbing = st.radio("Is Existing Plumbing Involved?", ["Yes", "No"])
@@ -203,75 +201,49 @@ with tab1:
     location = st.text_input("Location")
     client = st.text_input("Client / GC Name")
     bid_total = st.number_input("Total Bid Amount", min_value=0.0, step=100.0)
-    fixtures = st.text_area("Fixture List (one per line)")
-    default_terms = """".join([
-    "Estimate Validity: This estimate is valid for 30 days from the issue date.",
-    "Scope of Work: Only work listed in the Scope of Work is included. Additional tasks or materials may incur extra charges.",
-    "Permits & Inspections: Iron Plumbing Utah will obtain necessary permits and schedule inspections unless otherwise noted.",
-    "Materials & Fixtures:",
-    "  • Standard-grade, new materials will be used unless specified.",
-    "  • Special-order items are non-refundable once ordered.",
-    "Site Access:",
-    "  • Client must provide access to the job site and necessary utilities (water, gas, electric).",
-    "  • Delays due to limited access may result in additional costs.",
-    "Change Orders:",
-    "  • All changes to the scope must be approved in writing.",
-    "  • Additional labor/materials may change the project cost.",
-    "Payment Terms:",
-    "  • 50% deposit, 50% upon completion.",
-    "  • Late payments are subject to a 1.5% monthly finance charge.",
-    "Completion & Walkthrough:",
-    "  • A final walkthrough will be conducted upon completion.",
-    "  • Final payment is due upon approval or within 5 business days of completion.",
-    "Warranty:",
-    "  • One-year warranty on labor/workmanship.",
-    "  • Manufacturer warranties apply to all fixtures/materials.",
-    "  • Warranty is void if third-party work interferes with our installation.",
-    "Liability Limits:",
-    "  • We are not responsible for pre-existing issues or hidden conditions (e.g., mold, asbestos, structural problems).",
-    "  • We are not liable for damages caused by other contractors.",
-    "Cancellations:",
-    "  • 48 hours’ notice required for cancellations.",
-    "  • Cancellations within 24 hours may incur a fee.",
-    "  • Special-order deposits are non-refundable.",
-    "Force Majeure: Delays due to weather, supply issues, or events beyond our control are not the responsibility of Iron Plumbing Utah.",
-    "Material Ownership: All materials remain Iron Plumbing Utah’s property until final payment is made in full.",
-    "Licensing & Insurance: Fully licensed, bonded, and insured in the state of Utah. Insurance certificates available upon request.",
-    "Dispute Resolution: Disputes will be handled through mediation first. Unresolved issues will be settled in a Utah court of law.",
-    "Entire Agreement: This bid, along with its attachments, is the full agreement. No verbal agreements or outside documents apply unless signed by both parties."
-]""")
+    fixtures = st.text_area("Fixture List (one per line)", value=autofill_data.get("bid_summary", {}).get("fixture_list", ""))
+    default_terms = """
+Estimate Validity: This estimate is valid for 30 days from the issue date.
+Scope of Work: Only work listed in the Scope of Work is included. Additional tasks or materials may incur extra charges.
+Permits & Inspections: Iron Plumbing Utah will obtain necessary permits and schedule inspections unless otherwise noted.
+Materials & Fixtures:
+  • Standard-grade, new materials will be used unless specified.
+  • Special-order items are non-refundable once ordered.
+Site Access:
+  • Client must provide access to the job site and necessary utilities (water, gas, electric).
+  • Delays due to limited access may result in additional costs.
+Change Orders:
+  • All changes to the scope must be approved in writing.
+  • Additional labor/materials may change the project cost.
+Payment Terms:
+  • 50% deposit, 50% upon completion.
+  • Late payments are subject to a 1.5% monthly finance charge.
+Completion & Walkthrough:
+  • A final walkthrough will be conducted upon completion.
+  • Final payment is due upon approval or within 5 business days of completion.
+Warranty:
+  • One-year warranty on labor/workmanship.
+  • Manufacturer warranties apply to all fixtures/materials.
+  • Warranty is void if third-party work interferes with our installation.
+Liability Limits:
+  • We are not responsible for pre-existing issues or hidden conditions (e.g., mold, asbestos, structural problems).
+  • We are not liable for damages caused by other contractors.
+Cancellations:
+  • 48 hours’ notice required for cancellations.
+  • Cancellations within 24 hours may incur a fee.
+  • Special-order deposits are non-refundable.
+Force Majeure: Delays due to weather, supply issues, or events beyond our control are not the responsibility of Iron Plumbing Utah.
+Material Ownership: All materials remain Iron Plumbing Utah’s property until final payment is made in full.
+Licensing & Insurance: Fully licensed, bonded, and insured in the state of Utah. Insurance certificates available upon request.
+Dispute Resolution: Disputes will be handled through mediation first. Unresolved issues will be settled in a Utah court of law.
+Entire Agreement: This bid, along with its attachments, is the full agreement. No verbal agreements or outside documents apply unless signed by both parties.
+"""
 
-terms = st.text_area("Terms", value=st.session_state.get("terms", default_terms), key="terms")
-if st.button("🔁 Reset to Default Terms"):
-    st.session_state["terms"] = default_terms
-    st.experimental_rerun().",
-        "  • Delays due to limited access may result in additional costs.",
-        "Change Orders:",
-        "  • All changes to the scope must be approved in writing.",
-        "  • Additional labor/materials may change the project cost.",
-        "Payment Terms:",
-        "  • 50% deposit, 50% upon completion.",
-        "  • Late payments are subject to a 1.5% monthly finance charge.",
-        "Completion & Walkthrough:",
-        "  • A final walkthrough will be conducted upon completion.",
-        "  • Final payment is due upon approval or within 5 business days of completion.",
-        "Warranty:",
-        "  • One-year warranty on labor/workmanship.",
-        "  • Manufacturer warranties apply to all fixtures/materials.",
-        "  • Warranty is void if third-party work interferes with our installation.",
-        "Liability Limits:",
-        "  • We are not responsible for pre-existing issues or hidden conditions (e.g., mold, asbestos, structural problems).",
-        "  • We are not liable for damages caused by other contractors.",
-        "Cancellations:",
-        "  • 48 hours’ notice required for cancellations.",
-        "  • Cancellations within 24 hours may incur a fee.",
-        "  • Special-order deposits are non-refundable.",
-        "Force Majeure: Delays due to weather, supply issues, or events beyond our control are not the responsibility of Iron Plumbing Utah.",
-        "Material Ownership: All materials remain Iron Plumbing Utah’s property until final payment is made in full.",
-        "Licensing & Insurance: Fully licensed, bonded, and insured in the state of Utah. Insurance certificates available upon request.",
-        "Dispute Resolution: Disputes will be handled through mediation first. Unresolved issues will be settled in a Utah court of law.",
-        "Entire Agreement: This bid, along with its attachments, is the full agreement. No verbal agreements or outside documents apply unless signed by both parties."
-    ]))
+    terms = st.text_area("Terms", value=st.session_state.get("terms", default_terms), key="terms")
+    if st.button("🔁 Reset to Default Terms"):
+        st.session_state["terms"] = default_terms
+        st.experimental_rerun()
+
     sig_date = st.text_input("Signature Date", value=date.today().strftime("%B %d, %Y"))
     if st.button("📄 Generate Bid PDF"):
         pdf_bytes = generate_bid_pdf(project, location, client, bid_total, fixtures, terms, sig_date, logo_path=logo_path)
