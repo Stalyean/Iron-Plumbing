@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 from io import StringIO
 
+# Streamlit requires this first
+st.set_page_config(layout="centered")
+
 # Apply enhanced styling
 st.markdown("""
     <style>
@@ -122,8 +125,6 @@ def render_cost_estimator():
         st.download_button("📥 Download CSV", data=output.getvalue(), file_name="iron_cost_estimate.csv", mime="text/csv")
 
 # --- Main App Tabs ---
-st.set_page_config(layout="centered")
-
 tab1, tab2, tab3 = st.tabs(["📄 Bid Generator", "📁 Dossier Generator", "🧮 Cost Estimator"])
 
 # Tab 1 Placeholder (Bid Generator)
@@ -137,4 +138,5 @@ with tab2:
 # Tab 3 Active (Cost Estimator)
 with tab3:
     render_cost_estimator()
+
 
